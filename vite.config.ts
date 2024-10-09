@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   define: {
     'process.env': {
-      'API_KEY': '614f0dc4-4b7c-4b09-96df-300aca71f0d0',
+      'API_KEY': 'xxx',
       'SERVER_URL': 'http://localhost:3000'
     }
   }
