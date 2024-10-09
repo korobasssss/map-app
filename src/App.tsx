@@ -1,33 +1,34 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
+import { YandexMap } from './components/YandexMap'
+import { useAppSelector } from './store/hooks'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const {emptyCount, fullCount, totalCount} = useAppSelector((state) => state.count)
 
   return (
     <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+    <div className='banner'>
+      <strong>Статистика:</strong> 
+      <br></br>
+      <table className='table'>
+        <tbody>
+          <tr className='row'>
+          <td>Полные:</td>
+          <td><span id="full" className='count'>{fullCount}</span></td>
+        </tr>	
+        <tr className='row'>
+          <td>Пустые:</td>
+          <td><span id="empty" className='count'>{emptyCount}</span></td>
+        </tr>	
+        <tr className='row'>
+          <td>Итого :</td>
+          <td><span id="total" className='count'>{totalCount}</span></td>
+        </tr>	
+        </tbody>
+        
+      </table>
+    </div>
+    <YandexMap/>
     </>
   )
 }
