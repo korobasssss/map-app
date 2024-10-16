@@ -17,4 +17,7 @@ export default defineConfig({
       usePolling: true,
     },
   },
+  optimizeDeps: {
+    include: ['@pbe/react-yandex-maps'], // Убедитесь, что библиотека включена
+},
 })

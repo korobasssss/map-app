@@ -1,19 +1,32 @@
-declare global {
-  interface Window {
-    ymaps: any;
-  }
+import { ListBox, ListBoxItem, Map, ObjectManager, YMaps } from '@pbe/react-yandex-maps';
+import { useCallback, useEffect, useState } from 'react';
+import { fetchGetDataApi } from '../store/api/fetchGetDataApi';
+import { useAppDispatch } from '../store/hooks';
+import { setCount } from '../store/reducers/countSlice';
+
+const enum TYPE {
+    FULL = 'Полная',
+    EMPTY = 'Пустая'
 }
 
-import { FC, useEffect, useRef, useState } from 'react';
-import { fetchGetDataApi } from '../store/api/fetchGetDataApi';
-import { setCount } from '../store/reducers/countSlice';
-import { useAppDispatch } from '../store/hooks';
-
-export const YandexMap: FC = () => {
+export const YandexMap: React.FC = () => {
     const dispatch = useAppDispatch();
-    const mapContainerRef = useRef<HTMLDivElement | null>(null);
-    const isInitialized = useRef(false);
-    const [objectManager, setObjectManager] = useState<any | null>(null);
+    const [collection, setCollection] = useState<any[]>([]);
+
+    const [ListBoxItems, setListBoxItems] = useState([
+        {
+            key: TYPE.EMPTY,
+            title: TYPE.EMPTY,
+            isSelected: true
+        },
+        {
+            key: TYPE.FULL,
+            title: TYPE.FULL,
+            isSelected: true
+        }
+    ])
+
+    const [filters, setFilters] = useState<(string | null)[]>([TYPE.EMPTY, TYPE.FULL]);
 
     const { data } = fetchGetDataApi.useFetchAllDataQuery('', {
         pollingInterval: 5000,
@@ -21,99 +34,85 @@ export const YandexMap: FC = () => {
     });
 
     useEffect(() => {
-        if (!objectManager || !data) return;
+        if (data && Array.isArray(data)) {
 
-        objectManager.removeAll();
-        
-        objectManager.add(data);
+            setCollection([...data]);
 
-        const totalCount = data.length;
-        let emptyCount = 0;
-        let fullCount = 0;
+            const totalCount = data.length;
+            let emptyCount = 0;
+            let fullCount = 0;
 
-        data.forEach((item: any) => {
-            if (item.properties.balloonContent === "Полная") {
-                fullCount++;
-            } else {
-                emptyCount++;
-            }
-        });
-
-        dispatch(setCount({ emptyCount, totalCount, fullCount }));
-    }, [data, dispatch, objectManager])
-
-    useEffect(() => {
-        const init = () => {
-            const myMap = new window.ymaps.Map(mapContainerRef.current as HTMLDivElement, {
-                center: [55.76, 37.64],
-                zoom: 10,
-                controls: []
-            });
-    
-            const objectManagerInstance = new window.ymaps.ObjectManager({
-                clusterize: true,
-                gridSize: 64,
-                clusterIconLayout: "default#pieChart"
-            });
-    
-            myMap.geoObjects.add(objectManagerInstance);
-
-            setObjectManager(objectManagerInstance);
-    
-            const listBoxItems = ['Полная', 'Пустая'].map(title => 
-                new window.ymaps.control.ListBoxItem({
-                    data: { content: title },
-                    state: { selected: true }
-                })
-            );
-
-            const reducer = (filters: Record<string, boolean>, filter: any) => {
-                filters[filter.data.get('content')] = filter.isSelected();
-                return filters;
-            };
-    
-            const listBoxControl = new window.ymaps.control.ListBox({
-                data: {
-                    content: 'Фильтр',
-                    title: 'Фильтр'
-                },
-                items: listBoxItems,
-                state: {
-                    expanded: false,
-                    filters: listBoxItems.reduce(reducer, {})
+            data.forEach((item: any) => {
+                if (item.properties.balloonContent === TYPE.FULL) {
+                    fullCount++;
+                } else {
+                    emptyCount++;
                 }
             });
-    
-            myMap.controls.add(listBoxControl, {
-                float: 'none',
-                position: { top: '10px', left: '10px' }
-            });
-    
-            listBoxControl.events.add(['select', 'deselect'], (e: any) => {
-                const listBoxItem = e.get('target');
-                const filters = { ...listBoxControl.state.get('filters') };
-                filters[listBoxItem.data.get('content')] = listBoxItem.isSelected();
-                listBoxControl.state.set('filters', filters);
-            });
-    
-            const filterMonitor = new window.ymaps.Monitor(listBoxControl.state);
-            
-            filterMonitor.add('filters', (filters: any) => {
-                objectManagerInstance.setFilter(getFilterFunction(filters));
-            });
-    
-            function getFilterFunction(categories: Record<string, boolean>) {
-                return (obj: any) => categories[obj.properties.balloonContent];
-            }
-        };
 
-        if (!isInitialized.current) {
-            window.ymaps.ready(init);
-            isInitialized.current = true;
+            dispatch(setCount({ emptyCount, totalCount, fullCount }));
         }
-    }, []);
+    }, [data, dispatch]);
+
+    const handleFilter = useCallback((title: string, action: number) => {
+        const filtersCopy = [...filters]
+        const ListBoxItemsCopy = [...ListBoxItems]
+        if (action === 0 ) {
+            if (title === TYPE.FULL) {
+                filtersCopy[1] = null
+                ListBoxItemsCopy[1].isSelected = false
+            } else {
+                filtersCopy[0] = null
+                ListBoxItemsCopy[0].isSelected = false
+            }
+        } else {
+            if (title === TYPE.FULL) {
+                filtersCopy[1] = TYPE.FULL
+                ListBoxItemsCopy[1].isSelected = true
+            } else {
+                filtersCopy[0] = TYPE.EMPTY
+                ListBoxItemsCopy[0].isSelected = true
+            }
+        }
+        setFilters(filtersCopy)
+        setListBoxItems(ListBoxItemsCopy)
+    }, [filters, ListBoxItems])
 
     return (
-      <div ref={mapContainerRef} style={{ width: '100%', height: '100vh' }} />
+        <YMaps>
+            <Map defaultState={{ center: [55.75, 37.57], zoom: 11 }} style={{ width: '100%', height: '100vh' }}>
+                <ObjectManager
+                    key={JSON.stringify(collection)}
+                    objects={{
+                        openBalloonOnClick: true,
+                    }}
+                    clusters={{ 
+                        preset: 'islands#pieClusterIcons',
+                    }}
+                    options={{
+                        clusterize: true,
+                        gridSize: 32,
+                        
+                    }}
+                    features={(!filters[0] && !filters[1]) || (filters[0] && filters[1]) ? collection : 
+                        collection.filter(items => items.properties.balloonContent === filters[0] || items.properties.balloonContent === filters[1])}
+                    modules={[
+                        "objectManager.addon.objectsBalloon",
+                        "objectManager.addon.clustersBalloon",
+                    ]}
+                />
+                <ListBox data={{ content: "Фильтры" }}
+                    onChange={handleFilter}>
+                    {
+                        ListBoxItems.map((item: {key: string, title: string, isSelected: boolean}) => {
+                            return (
+                                <ListBoxItem data={{ content: item.title}} state={ {selected: item.isSelected }} key={item.key}
+                                            onClick={() => handleFilter(item.title, item.isSelected ? 0 : 1)}/>
+                            )
+                        })
+                    }
+                </ListBox>
+            </Map>
+        </YMaps>
     );
 };

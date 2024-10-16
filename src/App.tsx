@@ -1,5 +1,5 @@
 import './App.css'
-import { YandexMap } from './components/YandexMap'
+import { YandexMap } from './components/YandexMap.tsx'
 import { useAppSelector } from './store/hooks'
 
 function App() {
@@ -25,7 +25,6 @@ function App() {
           <td><span id="total" className='count'>{totalCount}</span></td>
         </tr>	
         </tbody>
-        
       </table>
     </div>
     <YandexMap/>
